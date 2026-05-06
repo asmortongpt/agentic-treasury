@@ -1,0 +1,15 @@
+{
+  "name": "agentic-treasury",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Connects Superteam Earn agent program to Jupiter Swap V2 for autonomous bounty-payout rebalancing.",
+  "scripts": {
+    "demo": "tsx examples/quote-demo.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
