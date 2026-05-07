@@ -95,14 +95,9 @@ async function dryRun(): Promise<void> {
 
 async function production(): Promise<void> {
   // Lazy-import so dry-run doesn't require @trepa/sdk to be installed.
-  const sdk = await import('@trepa/sdk');
-  const { credentialsFromEnv, Trepa } = sdk as unknown as {
-    credentialsFromEnv: () => Array<{ apiKey: string; privateKey: string }>;
-    Trepa: new (opts: { credentials: ReturnType<() => Array<{ apiKey: string; privateKey: string }>> }) => {
-      bots: { run: (opts: { predict: (pool: { min_stake: number }) => Promise<{ value: number; stake: number }> }) => Promise<void> };
-    };
-  };
-
+  // Types come from types/trepa-sdk.d.ts in this repo, mirroring
+  // https://docs.trepa.io/developers/sdk-reference.
+  const { credentialsFromEnv, Trepa } = await import('@trepa/sdk');
   const trepa = new Trepa({ credentials: credentialsFromEnv() });
 
   await trepa.bots.run({
