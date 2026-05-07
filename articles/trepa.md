@@ -130,6 +130,15 @@ flow is two-step: build an unsigned transaction via the API, sign with
 your exported wallet key, submit. No custodial signing, no third-party
 keepers.
 
+A working baseline bot lives at
+[`examples/trepa-bot/`](../examples/trepa-bot/) in this repo —
+pure-function strategy, six unit tests, dry-run mode that produces a
+real forecast against live Coinbase candles without ever needing a
+Trepa API key. The output is auditable: every component (drift, σ,
+typical 30-second move, cap, post-cap nudge) appears in the JSON, so a
+reviewer can sanity-check that the bot is not doing anything strange
+before they hand it real keys.
+
 **Two — the math rewards bots that *don't* try to be heroes.** A naive
 bot that just predicts the mid will beat the median often enough to
 clear win-rate. The hard work — and the γ = 6 exponent — favors models
