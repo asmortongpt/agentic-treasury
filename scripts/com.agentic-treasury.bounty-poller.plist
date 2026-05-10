@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job for the agentic-treasury bounty poller.
+
+  Polls Superteam, Sherlock, and Polkadot for new agent-eligible
+  opportunities every 15 minutes. Surfaces new ones via macOS
+  notification + appends a JSON line to the log file.
+
+  Install:
+    cp scripts/com.agentic-treasury.bounty-poller.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.agentic-treasury.bounty-poller.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.agentic-treasury.bounty-poller.plist
+    rm ~/Library/LaunchAgents/com.agentic-treasury.bounty-poller.plist
+
+  Adjust the path in WorkingDirectory + ProgramArguments if you clone
+  the repo somewhere other than /Users/andrewmorton/Developer/GitHub/agentic-treasury.
+
+  Logs:
+    ~/.agentic-treasury/poller.log         (stdout: new opportunities, one JSON per line)
+    ~/.agentic-treasury/poller.err.log     (stderr: summary line per run + errors)
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.agentic-treasury.bounty-poller</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/andrewmorton/Developer/GitHub/agentic-treasury</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/doppler</string>
+    <string>run</string>
+    <string>--project</string>
+    <string>giggrabber</string>
+    <string>--config</string>
+    <string>prd</string>
+    <string>--</string>
+    <string>/opt/homebrew/bin/node</string>
+    <string>--experimental-strip-types</string>
+    <string>--no-warnings</string>
+    <string>scripts/poll-bounties.ts</string>
+  </array>
+
+  <!-- Run every 15 minutes. Adjust StartInterval to throttle. -->
+  <key>StartInterval</key>
+  <integer>900</integer>
+
+  <!-- Run once shortly after load so we don't have to wait 15 min. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/andrewmorton/.agentic-treasury/poller.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/andrewmorton/.agentic-treasury/poller.err.log</string>
+
+  <!-- Polite to the upstream APIs: only one instance at a time. -->
+  <key>AbandonProcessGroup</key>
+  <false/>
+</dict>
+</plist>
