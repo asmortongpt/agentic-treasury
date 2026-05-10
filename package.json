@@ -5,11 +5,15 @@
   "type": "module",
   "description": "Connects Superteam Earn agent program to Jupiter Swap V2 for autonomous bounty-payout rebalancing.",
   "scripts": {
-    "demo": "tsx examples/quote-demo.ts",
-    "typecheck": "tsc --noEmit"
+    "demo:quote": "node --experimental-strip-types --no-warnings examples/quote-demo.ts",
+    "demo:swap-build": "node --experimental-strip-types --no-warnings examples/swap-build-demo.ts",
+    "demo:trepa-bot": "node --experimental-strip-types --no-warnings examples/trepa-bot/bot.ts --dry-run",
+    "test": "node --experimental-strip-types --no-warnings --test examples/trepa-bot/strategy.test.ts",
+    "typecheck": "tsc --noEmit",
+    "start": "node --experimental-strip-types --no-warnings server.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "license": "MIT"
 }
