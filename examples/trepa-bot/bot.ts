@@ -1,8 +1,9 @@
 /**
  * Trepa Flash Pool prediction bot.
  *
- *   node --env-file=.env bot.ts                 # production: places real predictions
- *   node bot.ts --dry-run                       # dry-run: prints forecasts only
+ *   node --env-file=.env bot.ts                       # production: places real predictions
+ *   node bot.ts --dry-run                             # dry-run: prints forecasts only
+ *   node bot.ts --dry-run --swarm 5                   # dry-run: print N-bot outcome band
  *
  * In dry-run mode, no .env is needed. The bot fetches Binance BTC/USDT
  * spot and 1-second klines, runs the strategy from ./strategy.ts, and
@@ -12,9 +13,14 @@
  * In production mode, the bot loads `@trepa/sdk` and runs trepa.bots.run.
  * Same forecast function feeds both modes; the difference is only that
  * production submits the result to Trepa.
+ *
+ * For multi-account swarms in production, see ./swarm.ts (same dry-run
+ * + lazy-import pattern, but uses trepa.bots.run's function form to
+ * place each bot on an outcome-band slot).
  */
 
 import { forecast, DEFAULT_CONFIG, type PriceSample } from './strategy.ts';
+import { buildBandPlan, DEFAULT_SWARM_CONFIG, type SwarmConfig } from './swarm.ts';
 
 /**
  * Price source selection notes.
@@ -76,19 +82,54 @@ async function fetchRecentSamples(): Promise<PriceSample[]> {
   return klines.map(k => ({ t: k[0], p: Number(k[4]) }));
 }
 
+function parseSwarmArg(argv: string[]): number | null {
+  const i = argv.indexOf('--swarm');
+  if (i < 0 || i === argv.length - 1) return null;
+  const raw = argv[i + 1]!;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`--swarm requires a positive integer, got "${raw}"`);
+  }
+  return n;
+}
+
 async function dryRun(): Promise<void> {
+  const swarmCount = parseSwarmArg(process.argv);
   const [spot, samples] = await Promise.all([fetchSpot(), fetchRecentSamples()]);
   const f = forecast(spot, samples, DEFAULT_CONFIG);
+
+  if (swarmCount === null) {
+    console.log(JSON.stringify({
+      spotUSD: f.spot,
+      predictionUSD: f.prediction,
+      nudgeUSD: f.cappedNudge,
+      components: {
+        driftDollarsRaw: f.driftDollars,
+        typicalMove30sUSD: f.typicalMoveDollars,
+        capDollars: f.capDollars,
+        sigmaPerSecond: f.sigmaPerSecond,
+        sampleCount: samples.length,
+      },
+    }, null, 2));
+    return;
+  }
+
+  const swarm: SwarmConfig = { ...DEFAULT_SWARM_CONFIG, count: swarmCount };
+  const plan = buildBandPlan(f, swarm);
   console.log(JSON.stringify({
     spotUSD: f.spot,
-    predictionUSD: f.prediction,
-    nudgeUSD: f.cappedNudge,
+    anchorUSD: plan.anchor,
+    bandSpacingUSD: plan.spacing,
+    botCount: plan.count,
+    botPredictionsUSD: plan.predictions,
     components: {
       driftDollarsRaw: f.driftDollars,
       typicalMove30sUSD: f.typicalMoveDollars,
       capDollars: f.capDollars,
+      cappedNudgeUSD: f.cappedNudge,
       sigmaPerSecond: f.sigmaPerSecond,
       sampleCount: samples.length,
+      bandSpacingFraction: swarm.bandSpacingFraction,
     },
   }, null, 2));
 }

@@ -30,14 +30,32 @@ declare module '@trepa/sdk' {
     stake: number;
   }
 
+  /**
+   * Per-bot slot passed into the swarm factory. Mirrors the docs at
+   * https://docs.trepa.io/developers/swarms#different-behaviour-per-bot.
+   */
+  export interface SwarmSlot {
+    /** Zero-based bot index inside this swarm. */
+    index: number;
+    /** Total number of bots in this swarm. */
+    count: number;
+  }
+
   export interface BotsRunOptions {
     predict: (pool: PoolContext) => Promise<PredictResult> | PredictResult;
   }
 
+  /**
+   * Function form of `bots.run`: returns per-bot options keyed by slot.
+   * Used for outcome-band swarms where each bot predicts a different value
+   * around a shared anchor.
+   */
+  export type BotsRunFactory = (slot: SwarmSlot) => BotsRunOptions;
+
   export class Trepa {
     constructor(opts: { credentials: AgentCredentials[] });
     bots: {
-      run: (opts: BotsRunOptions) => Promise<void>;
+      run: (opts: BotsRunOptions | BotsRunFactory) => Promise<void>;
     };
   }
 }
