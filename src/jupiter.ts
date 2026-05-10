@@ -109,10 +109,15 @@ export class JupiterClient {
   }
 }
 
+/**
+ * Common Solana SPL mints. Verified against
+ * https://lite-api.jup.ag/tokens/v2/search at integration time.
+ * Symbol casing matches Jupiter's tokenlist exactly.
+ */
 export const COMMON_MINTS = {
   USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-  jupUSD: 'jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v',
-  USDG: 'USDGAhRR9w8RmYdNPp7yZdfzssJoYqJxBMoxBXPgCrk',
   SOL: 'So11111111111111111111111111111111111111112',
+  JupSOL: 'jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v',
+  JupUSD: 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD',
 } as const;
