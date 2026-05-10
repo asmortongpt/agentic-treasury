@@ -45,11 +45,18 @@ export interface RebalanceTask {
   signableTransaction: string;
 }
 
+/**
+ * Maps a sponsor's payout-token symbol to the SPL mint we'd quote
+ * against. Symbols are normalized to lower-case at lookup time so
+ * sponsors writing JUPUSD / jupUSD / JupUSD all resolve.
+ */
 const TOKEN_MINT_BY_NAME: Record<string, string> = {
-  USDC: COMMON_MINTS.USDC,
-  USDT: COMMON_MINTS.USDT,
-  jupUSD: COMMON_MINTS.jupUSD,
-  USDG: COMMON_MINTS.USDG,
+  usdc: COMMON_MINTS.USDC,
+  usdt: COMMON_MINTS.USDT,
+  usdg: COMMON_MINTS.USDG,
+  jupusd: COMMON_MINTS.JupUSD,
+  jupsol: COMMON_MINTS.JupSOL,
+  sol: COMMON_MINTS.SOL,
 };
 
 export class TreasuryRebalancer {
@@ -76,7 +83,7 @@ export class TreasuryRebalancer {
       // listing here in real code. For demo we expose it from the listing
       // summary fetched separately.
       const tokenName = (sub as unknown as { paidToken?: string }).paidToken ?? 'USDC';
-      const inputMint = TOKEN_MINT_BY_NAME[tokenName] ?? COMMON_MINTS.USDC;
+      const inputMint = TOKEN_MINT_BY_NAME[tokenName.toLowerCase()] ?? COMMON_MINTS.USDC;
 
       if (inputMint === this.cfg.targetMint) continue;
 
