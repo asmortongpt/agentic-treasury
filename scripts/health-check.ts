@@ -274,11 +274,20 @@ async function checkSuperteamSubmission(envName: string): Promise<CheckResult> {
       message: `env var ${envName} not set (run under doppler run -- ...)`,
     };
   }
+  return checkSuperteamSubmissionById(subId, envName);
+}
+
+/**
+ * Same probe as `checkSuperteamSubmission`, but takes a resolved
+ * submission id directly. Used when we already have the id from the
+ * memory db rather than from a Doppler env var.
+ */
+async function checkSuperteamSubmissionById(subId: string, label: string): Promise<CheckResult> {
   const apiKey = process.env['SUPERTEAM_AGENT_API_KEY'];
   if (!apiKey) {
     return {
       kind: 'superteam-submission',
-      target: envName,
+      target: label,
       status: 'warn',
       message: 'SUPERTEAM_AGENT_API_KEY missing',
     };
@@ -299,7 +308,7 @@ async function checkSuperteamSubmission(envName: string): Promise<CheckResult> {
       const status: Status = res.status === 404 ? 'warn' : 'fail';
       return {
         kind: 'superteam-submission',
-        target: envName,
+        target: label,
         status,
         message: `HTTP ${res.status} fetching submission ${subId}${res.status === 404 ? ' (per-submission endpoint not available)' : ''}`,
         detail: { subId, httpStatus: res.status },
@@ -315,7 +324,7 @@ async function checkSuperteamSubmission(envName: string): Promise<CheckResult> {
     if (body.isPaid) {
       return {
         kind: 'superteam-submission',
-        target: envName,
+        target: label,
         status: 'warn',
         message: `PAID — ${body.listing?.title ?? subId}${body.rewardInUSD ? ` ($${body.rewardInUSD})` : ''}`,
         detail: { subId, isWinner: body.isWinner, isPaid: body.isPaid, rewardUSD: body.rewardInUSD, listingSlug: body.listing?.slug },
@@ -324,7 +333,7 @@ async function checkSuperteamSubmission(envName: string): Promise<CheckResult> {
     if (body.isWinner) {
       return {
         kind: 'superteam-submission',
-        target: envName,
+        target: label,
         status: 'warn',
         message: `WINNER — ${body.listing?.title ?? subId}`,
         detail: { subId, isWinner: body.isWinner, isPaid: body.isPaid, listingSlug: body.listing?.slug },
@@ -332,7 +341,7 @@ async function checkSuperteamSubmission(envName: string): Promise<CheckResult> {
     }
     return {
       kind: 'superteam-submission',
-      target: envName,
+      target: label,
       status: 'ok',
       message: `pending — ${body.listing?.title ?? subId}`,
       detail: { subId, isWinner: body.isWinner ?? false, isPaid: body.isPaid ?? false, listingSlug: body.listing?.slug },
@@ -340,7 +349,7 @@ async function checkSuperteamSubmission(envName: string): Promise<CheckResult> {
   } catch (err) {
     return {
       kind: 'superteam-submission',
-      target: envName,
+      target: label,
       status: 'fail',
       message: `submission probe failed: ${String(err).slice(0, 120)}`,
       detail: { subId },
@@ -412,8 +421,35 @@ async function runHealthCheck(): Promise<HealthRunSummary> {
   const httpResults = await Promise.all(config.httpProbes.map(checkHttpProbe));
   checks.push(...httpResults);
 
-  const subResults = await Promise.all(config.superteamSubmissions.map(checkSuperteamSubmission));
-  checks.push(...subResults);
+  // Prefer the memory db as the source of truth for "which submissions
+  // should we be tracking?". Falls back to the Doppler env-var list in
+  // the config if the memory db is empty (first boot, fresh machine, or
+  // a node where node:sqlite isn't available). Lazy import so the
+  // health-check still runs if the memory module fails to load.
+  let memorySubIds: string[] = [];
+  try {
+    const mem = await import('../src/memory/index.ts');
+    memorySubIds = mem
+      .listSubmissions({ platform: 'superteam', status: 'pending' })
+      .map(s => s.id);
+  } catch (err) {
+    checks.push({
+      kind: 'superteam-submission',
+      target: 'memory-source',
+      status: 'warn',
+      message: `memory module unavailable, falling back to Doppler env list: ${String(err).slice(0, 120)}`,
+    });
+  }
+
+  if (memorySubIds.length > 0) {
+    const memResults = await Promise.all(
+      memorySubIds.map(id => checkSuperteamSubmissionById(id, `memory:${id.slice(0, 8)}`)),
+    );
+    checks.push(...memResults);
+  } else {
+    const subResults = await Promise.all(config.superteamSubmissions.map(checkSuperteamSubmission));
+    checks.push(...subResults);
+  }
 
   const overall = aggregateStatus(checks);
   const summary: HealthRunSummary = {

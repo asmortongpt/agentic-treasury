@@ -208,6 +208,36 @@ async function main(): Promise<void> {
   state.lastRun = new Date().toISOString();
   saveState(state);
 
+  // Best-effort: also log each new opportunity into the memory db so
+  // downstream agents can dedupe across cycles. Lazy import so the
+  // poller still works if node:sqlite is unavailable (older Node) or
+  // the memory module otherwise can't load.
+  if (newOpps.length > 0) {
+    try {
+      const mem = await import('../src/memory/index.ts');
+      for (const opp of newOpps) {
+        try {
+          mem.recordEvent({
+            kind: 'bounty.seen',
+            subjectId: opp.id,
+            payload: {
+              channel: opp.channel,
+              title: opp.title,
+              url: opp.url,
+              rewardUsd: opp.rewardUsd,
+              deadlineISO: opp.deadlineISO,
+              meta: opp.meta ?? null,
+            },
+          });
+        } catch (err) {
+          console.error(`[poll] memory recordEvent failed for ${opp.id}: ${String(err).slice(0, 120)}`);
+        }
+      }
+    } catch (err) {
+      console.error(`[poll] memory module unavailable: ${String(err).slice(0, 120)}`);
+    }
+  }
+
   // Surface new opportunities: stdout JSON line + macOS notification.
   for (const opp of newOpps) {
     process.stdout.write(JSON.stringify({ type: 'new-opportunity', ...opp }) + '\n');

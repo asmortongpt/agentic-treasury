@@ -83,6 +83,76 @@ the route plan printed.
 See [FEEDBACK.md](FEEDBACK.md) for what worked, what didn't, and what we
 needed that wasn't there.
 
+## Memory
+
+Bounty-hunting agents are useless if every cycle starts from scratch.
+The same listing gets re-evaluated, the same submission gets re-checked,
+the same losing strategy gets re-attempted. `src/memory/` is a thin
+SQLite-backed memory layer that closes that gap.
+
+What's stored (three tables, no more):
+
+- `submissions` — bounties/gigs we've entered. Columns: `id`, `platform`
+  (`superteam` | `devpost` | `railway-bounty` | etc), `listing_id`,
+  `listing_title`, `submitted_at`, `status` (`pending` | `won` | `lost`
+  | `paid` | `rejected` | `unknown`), `reward_usd`, `paid_at`,
+  `metadata_json`.
+- `events` — append-only structured log. Columns: `id`, `ts`, `kind`
+  (e.g. `bounty.seen`, `cycle.start`, `cycle.error`, `gig.executed`),
+  `subject_id`, `payload_json`.
+- `lessons` — short one-line summaries the agent can re-read on later
+  cycles. Columns: `id`, `category`, `summary`, `evidence_json`,
+  `created_at`, `applied_count`.
+
+Where it lives:
+
+```
+~/.agentic-treasury/memory.db
+```
+
+The path is overridable via the `AGENTIC_TREASURY_MEMORY_DB` env var
+(used by the test suite to point at tempdirs).
+
+How to inspect it from the shell:
+
+```bash
+sqlite3 ~/.agentic-treasury/memory.db .tables
+# submissions  events  lessons
+
+sqlite3 ~/.agentic-treasury/memory.db \
+  "SELECT id, platform, status, reward_usd FROM submissions ORDER BY submitted_at DESC LIMIT 10"
+
+sqlite3 ~/.agentic-treasury/memory.db \
+  "SELECT datetime(ts/1000,'unixepoch'), kind, subject_id FROM events ORDER BY ts DESC LIMIT 20"
+```
+
+Backfill from existing state — reads `~/.agentic-treasury/state.json`
+(poller seen-set) and `SUPERTEAM_SUB_*` env vars (under Doppler) and
+inserts both into memory. Idempotent — re-running is safe:
+
+```bash
+doppler run --project giggrabber --config prd -- \
+  node --experimental-strip-types --no-warnings scripts/memory-import.ts
+```
+
+Public API (see `src/memory/index.ts` for full signatures):
+
+```ts
+import {
+  recordSubmission, updateSubmissionStatus, getSubmission, listSubmissions,
+  recordEvent, recentEvents,
+  recordLesson, getLessons, markLessonApplied,
+  hasSeenListing,
+} from './src/memory/index.ts';
+```
+
+Privacy property: everything is on this machine. The memory module makes
+**zero network calls**. No telemetry, no remote sync, no embeddings —
+just SQLite. If you want this on another machine, copy the `.db` file.
+
+Dependencies: `node:sqlite` from the Node 22 stdlib. No npm package
+needed.
+
 ## License
 
 MIT.
