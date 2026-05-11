@@ -15,5 +15,5 @@
     "types": ["node"],
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["src/**/*", "examples/**/*", "types/**/*"]
+  "include": ["src/**/*", "examples/**/*", "types/**/*", "scripts/**/*.ts"]
 }

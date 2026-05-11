@@ -1,0 +1,32 @@
+{
+  "launchdJobs": [
+    {
+      "label": "com.giggrabber.processor",
+      "logPath": "/Users/andrewmorton/Developer/GitHub/GigGrabber/logs/processor.log",
+      "maxStaleMinutes": 30
+    },
+    {
+      "label": "com.giggrabber.curator",
+      "logPath": "/Users/andrewmorton/Developer/GitHub/GigGrabber/logs/curator.log",
+      "maxStaleMinutes": 90
+    },
+    {
+      "label": "com.agentic-treasury.bounty-poller",
+      "logPath": "/Users/andrewmorton/.agentic-treasury/poller.err.log",
+      "maxStaleMinutes": 30
+    },
+    {
+      "label": "com.mortondigital.moneymaker",
+      "logPath": "/Users/andrewmorton/Developer/GitHub/MoneyMaker/logs/pipeline-launchd.log",
+      "maxStaleMinutes": 60
+    }
+  ],
+  "httpProbes": [],
+  "superteamSubmissions": [
+    "SUPERTEAM_SUB_TREPA",
+    "SUPERTEAM_SUB_JUPITER_TREASURY",
+    "SUPERTEAM_SUB_COVENANT",
+    "SUPERTEAM_SUB_RAZE",
+    "SUPERTEAM_SUB_KIMIA"
+  ]
+}

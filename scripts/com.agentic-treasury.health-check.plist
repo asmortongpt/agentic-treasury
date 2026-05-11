@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job for the agentic-treasury health checker.
+
+  Polls watched launchd jobs, log staleness, optional HTTP probes, and
+  Superteam submission status every 10 minutes. Sends a macOS
+  notification on any fail. Writes one JSON line per run to
+  ~/.agentic-treasury/health-history.jsonl.
+
+  Install:
+    cp scripts/com.agentic-treasury.health-check.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.agentic-treasury.health-check.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.agentic-treasury.health-check.plist
+    rm ~/Library/LaunchAgents/com.agentic-treasury.health-check.plist
+
+  Logs:
+    ~/.agentic-treasury/health-check.log       (stdout: JSON summary per run)
+    ~/.agentic-treasury/health-check.err.log   (stderr)
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.agentic-treasury.health-check</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/andrewmorton/Developer/GitHub/agentic-treasury</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/doppler</string>
+    <string>run</string>
+    <string>--project</string>
+    <string>giggrabber</string>
+    <string>--config</string>
+    <string>prd</string>
+    <string>--</string>
+    <string>/opt/homebrew/bin/node</string>
+    <string>--experimental-strip-types</string>
+    <string>--no-warnings</string>
+    <string>scripts/health-check.ts</string>
+  </array>
+
+  <!-- Run every 10 minutes. The processor's maxStaleMinutes is 30, so
+       10 gives us three chances to catch it before declaring fail. -->
+  <key>StartInterval</key>
+  <integer>600</integer>
+
+  <!-- Run once shortly after load so we don't have to wait 10 min for
+       the first signal. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/andrewmorton/.agentic-treasury/health-check.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/andrewmorton/.agentic-treasury/health-check.err.log</string>
+
+  <!-- One instance at a time — checks are cheap, but Superteam API is
+       politely rate-limited. -->
+  <key>AbandonProcessGroup</key>
+  <false/>
+</dict>
+</plist>
